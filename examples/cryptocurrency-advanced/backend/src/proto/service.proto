@@ -50,11 +50,34 @@ message Wallet {
   string name = 2;
   // Current balance of the wallet.
   uint64 balance = 3;
+  // Current freezed balance of the wallet.
+  uint64 f_balance = 4;
   // Length of the transactions history.
-  uint64 history_len = 4;
+  uint64 history_len = 5;
   // `Hash` of the transactions history.
-  exonum.crypto.Hash history_hash = 5;
+  exonum.crypto.Hash history_hash = 6;
 }
-
+// Sends 'amount' of currency to another owner with approval
+message TxSendApprove {
+  // Address of receiver's wallet
+  exonum.crypto.Hash to = 1;
+  // Amount of currency to transfer
+  uint64 amount = 2;
+  // Auxiliary number to guarantee non-idempotence of transactions
+  uint64 seed = 3;
+  // Address of approver's wallet.
+  exonum.crypto.Hash approver = 4;
+}
+// Approves TxSendApprove transaction
+message TxApprove {
+  // Address of sender's wallet.
+  exonum.crypto.Hash from = 1;
+  // Address of receiver's wallet.
+  exonum.crypto.Hash to = 2;
+  // Amount of currency to transfer.
+  uint64 amount = 3;
+  // Auxiliary number to guarantee non-idempotence of transactions.
+  uint64 seed = 4;
+}
 // Cryptocurrency configuration.
 message Config {}

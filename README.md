@@ -1,5 +1,14 @@
 # Exonum
 
+Выполнение домашнего задания для курса `Программирование смарт-контрактов`.  
+Выполнили: `Переплетчиков Антон`, `Шафиев Ибрагим` и `Федотов Георгий`
+Реализация:
+- Tранзакция TxSendApprove
+- Транзакция TxApprove
+- Добавлен REST API запрос по выдаче истории операций с подтверждением
+- Учтено требование о замороженных средствах от неподтвержденных транзцакций при совершении новой транзакции
+- Новые транзакции покрыты тестами
+
 **Status:**
 [![CI](https://github.com/exonum/exonum/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/exonum/exonum/actions/workflows/ci.yml)
 [![dependency status](https://deps.rs/repo/github/exonum/exonum/status.svg)](https://deps.rs/repo/github/exonum/exonum)

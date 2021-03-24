@@ -25,6 +25,8 @@ use exonum::{
 use exonum_derive::{FromAccess, RequireArtifact};
 
 use crate::{wallet::Wallet, INITIAL_BALANCE};
+use crate::{app_transactions::TxSendApprove};
+use crate::{transactions::TxApprove};
 
 /// Database schema for the cryptocurrency.
 ///
@@ -35,7 +37,7 @@ pub(crate) struct SchemaImpl<T: Access> {
     #[from_access(flatten)]
     pub public: Schema<T>,
     /// History for specific wallets.
-    pub wallet_history: Group<T, Address, ProofListIndex<T::Base, Hash>>,
+    pub wallet_history: Group<T, Address, ProofListIndex<T::Base, Hash>>
 }
 
 /// Public part of the cryptocurrency schema.
@@ -44,6 +46,10 @@ pub(crate) struct SchemaImpl<T: Access> {
 pub struct Schema<T: Access> {
     /// Map of wallet keys to information about the corresponding account.
     pub wallets: RawProofMapIndex<T::Base, Address, Wallet>,
+    // Map of approval transactions to information about the corresponding approval transaction.
+    pub approval_transactions: RawProofMapIndex<T::Base, Hash, TxSendApprove>,
+     // Map of approvad transactions
+    pub approved_transactions: RawProofMapIndex<T::Base, Hash, TxApprove>
 }
 
 impl<T: Access> SchemaImpl<T> {
@@ -61,6 +67,46 @@ where
     T: Access,
     T::Base: RawAccessMut,
 {
+
+    pub fn create_send_approve_transaction(&mut self, from: Wallet, to: Address, amount: u64,  approver: Address, tx_hash: Hash) {
+        // Update freezed balance & save the history
+        self.change_wallet_balance(from, 0, amount as i64, tx_hash);
+
+        // Save transaction in schema.approval_transactions
+        let transaction = TxSendApprove::new(to, amount, approver);
+        self.public.approval_transactions.put(&tx_hash, transaction);
+    }
+    /// Creates new transaction with approval and saves hash.
+    pub fn create_approval_transaction(&mut self, from: Wallet, to: Address, amount: u64, txApprove: TxApprove, tx_hash: Hash) {
+         let neg_amount = (amount as i64) * -1;
+        let pos_amount = amount as i64;
+
+        // Update sender_wallet & save the history
+        self.change_wallet_balance(from, neg_amount, neg_amount, tx_hash);
+        // Update receiver_wallet & save the history
+        self.change_wallet_balance(to, pos_amount, 0, tx_hash);
+        // Save transaction in schema.approval_transactions
+        self.public.approval_transactions.put(&tx_hash, txApprove.clone());
+    }
+
+    /// Increases freezed balance of the wallet and saves hash.
+     pub fn change_wallet_balance(&mut self, wallet: Wallet, balance_change: i64, f_balance_change: i64, transaction: Hash) {
+        // Save transaction in wallet's history
+        let mut history = self.wallet_history.get(&wallet.owner);
+        history.push(transaction);
+        let history_hash = history.object_hash();
+
+        let wallet_f_balance = wallet.f_balance;
+        let wallet_balance = wallet.balance;
+
+        let wallet = wallet.set_balance(((wallet_balance as i64) + balance_change) as u64, &history_hash);
+        let wallet = wallet.set_freezed_balance(((wallet_f_balance as i64) + f_balance_change) as u64, &history_hash);
+
+        let wallet_key = wallet.owner;
+        self.public.wallets.put(&wallet_key, wallet);
+    }
+
+
     /// Increases balance of the wallet and append new record to its history.
     pub fn increase_wallet_balance(&mut self, wallet: Wallet, amount: u64, transaction: Hash) {
         let mut history = self.wallet_history.get(&wallet.owner);
@@ -88,7 +134,7 @@ where
         let mut history = self.wallet_history.get(&key);
         history.push(transaction);
         let history_hash = history.object_hash();
-        let wallet = Wallet::new(key, name, INITIAL_BALANCE, history.len(), &history_hash);
+        let wallet = Wallet::new(key, name, INITIAL_BALANCE, 0, history.len(), &history_hash);
         self.public.wallets.put(&key, wallet);
     }
 }
